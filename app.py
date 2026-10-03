@@ -5,6 +5,10 @@ import math
 from flask import Flask, jsonify, request
 import requests
 
+url = f"{OPENFOODFACTS_API_URL}{OPENFOODFACTS_API_PREFIX}/product/3017620422003.json"
+response = requests.get(url, headers={"User-Agent": "MyApp/1.0 (you@example.com)"})
+print(response.json())
+
 OPENFOODFACTS_PRODUCTS = [
     {
         "id": 1,
@@ -30,10 +34,34 @@ OPENFOODFACTS_PRODUCTS = [
         "ingredients_text": "Water, apple juice concentrate",
         "quantity": "1 L",
     },
+    {
+        "id": 4,
+        "code": "0098765432109",
+        "product_name": "Whole Wheat Bread",
+        "brands": "Baker's Delight",
+        "ingredients_text": "Whole wheat flour, water, yeast, salt",
+        "quantity": "400 g",
+    },
+    {
+        "id": 5,
+        "code": "0001234567890",
+        "product_name": "Greek Yogurt",
+        "brands": "Dairyland",
+        "ingredients_text": "Pasteurized milk, live cultures",
+        "quantity": "150 g",
+    },
+    {
+        "id": 6,
+        "code": "0009876543210",
+        "product_name": "Peanut Butter",
+        "brands": "Nutty Spread",
+        "ingredients_text": "Roasted peanuts, salt",
+        "quantity": "250 g",
+    },
 ]
 
-OPENFOODFACTS_API_PREFIX = "/openfoodfacts-server/api"
 OPENFOODFACTS_API_URL = "https://world.openfoodfacts.org"
+OPENFOODFACTS_API_PREFIX = "/api/v2"
 
 
 def create_app(test_config=None):

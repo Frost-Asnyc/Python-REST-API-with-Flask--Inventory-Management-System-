@@ -15,7 +15,11 @@ def call_api(method, url, **kwargs):
         response = requests.request(method, url, timeout=5, **kwargs)
         response.raise_for_status()
         if response.content:
-            print(json.dumps(response.json(), indent=2))
+            result = response.json()
+            if result == []:
+                print("Inventory is empty. Choose 3 to add a product.")
+            else:
+                print(json.dumps(result, indent=2))
     except requests.RequestException as error:
         print(f"API request failed: {error}")
     except ValueError:

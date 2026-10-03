@@ -22,6 +22,19 @@ def test_call_api_sends_request_and_prints_response(mock_request, capsys):
     assert '"message": "ok"' in capsys.readouterr().out
 
 
+@patch("cli.requests.request")
+def test_call_api_explains_when_inventory_is_empty(mock_request, capsys):
+    response = Mock()
+    response.raise_for_status.return_value = None
+    response.content = b"[]\n"
+    response.json.return_value = []
+    mock_request.return_value = response
+
+    call_api("GET", "http://localhost:5000/inventory")
+
+    assert "Inventory is empty" in capsys.readouterr().out
+
+
 @patch("cli.call_api")
 @patch("builtins.input", side_effect=[
     "1",

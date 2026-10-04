@@ -54,6 +54,30 @@ OPENFOODFACTS_PRODUCTS = [
         "ingredients_text": "Roasted peanuts, salt",
         "quantity": "250 g",
     },
+    {
+        "id": 7,
+        "code": "0001112223334",
+        "product_name": "Dark Chocolate Bar",
+        "brands": "Magnum Chocolates",
+        "ingredients_text": "Dark chocolate, sugar, cocoa butter",
+        "quantity": "100 g",
+    },
+    {
+        "id": 8,
+        "code": "0004445556667",
+        "product_name": "Green Tea",
+        "brands": "Nature's Best",
+        "ingredients_text": "Organic green tea leaves",
+        "quantity": "100 g",
+    },
+    {
+        "id": 9,
+        "code": "0008889990001",
+        "product_name": "Extra Virgin Olive Oil",
+        "brands": "Mediterranean Gold",
+        "ingredients_text": "100% extra virgin olive oil",
+        "quantity": "500 ml",
+    },
 ]
 
 OPENFOODFACTS_API_URL = "https://world.openfoodfacts.org"

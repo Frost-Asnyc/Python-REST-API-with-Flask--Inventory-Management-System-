@@ -49,6 +49,55 @@ def test_create_requires_a_name_and_valid_quantity():
     assert bad_quantity.status_code == 400
 
 
+def test_inventory_routes_accept_products_aliases():
+    client = make_client()
+
+    created = client.post("/products", json={"name": "Pears"})
+
+    assert created.status_code == 201
+    assert client.get("/products").json == client.get("/inventory").json
+    assert client.get("/products/1").json["name"] == "Pears"
+
+
+def test_home_route_reports_api_status():
+    response = make_client().get("/")
+
+    assert response.status_code == 200
+    assert response.json == {"message": "Inventory API is running."}
+
+
+def test_create_rejects_non_object_json_and_unknown_fields():
+    client = make_client()
+
+    non_object = client.post("/inventory", json=["Apples"])
+    unknown_field = client.post(
+        "/inventory", json={"name": "Apples", "stock": 2}
+    )
+
+    assert non_object.status_code == 400
+    assert unknown_field.status_code == 400
+    assert client.get("/inventory").json == []
+
+
+def test_create_validates_optional_product_field_types():
+    invalid_products = [
+        {"name": ""},
+        {"name": "Apples", "description": 1},
+        {"name": "Apples", "quantity": True},
+        {"name": "Apples", "quantity": 1.5},
+        {"name": "Apples", "price": True},
+        {"name": "Apples", "price": float("nan")},
+        {"name": "Apples", "barcode": 123},
+        {"name": "Apples", "brand": None},
+        {"name": "Apples", "ingredients": 1},
+        {"name": "Apples", "package_size": 1},
+    ]
+
+    for product in invalid_products:
+        response = make_client().post("/inventory", json=product)
+        assert response.status_code == 400, product
+
+
 def test_get_missing_product_returns_404():
     client = make_client()
 
@@ -56,6 +105,29 @@ def test_get_missing_product_returns_404():
 
     assert response.status_code == 404
     assert response.json["error"] == "Product not found."
+
+
+def test_update_supports_put_and_rejects_empty_or_invalid_updates():
+    client = make_client()
+    client.post("/inventory", json={"name": "Apples", "quantity": 3})
+
+    updated = client.put("/inventory/1", json={"name": "Green apples"})
+    empty = client.patch("/inventory/1", json={})
+    invalid = client.patch("/inventory/1", json={"price": -1})
+    missing = client.put("/inventory/99", json={"name": "Missing"})
+
+    assert updated.status_code == 200
+    assert updated.json["name"] == "Green apples"
+    assert updated.json["quantity"] == 3
+    assert empty.status_code == 400
+    assert invalid.status_code == 400
+    assert missing.status_code == 404
+
+
+def test_delete_missing_product_returns_404():
+    response = make_client().delete("/inventory/99")
+
+    assert response.status_code == 404
 
 
 def mock_response(result):
@@ -157,12 +229,81 @@ def test_add_inventory_item_reports_external_api_failure(_mock_get):
     assert client.get("/inventory").json == []
 
 
+@patch("app.requests.get")
+def test_create_with_name_does_not_call_external_api(mock_get):
+    client = make_client()
+
+    response = client.post("/inventory", json={"name": "Apples"})
+
+    assert response.status_code == 201
+    mock_get.assert_not_called()
+
+
+@patch("app.requests.get")
+def test_create_with_unknown_barcode_returns_404_without_creating_product(mock_get):
+    mock_get.return_value = mock_response({"status": 0})
+    client = make_client()
+
+    response = client.post(
+        "/inventory", json={"barcode": "12345", "quantity": 2}
+    )
+
+    assert response.status_code == 404
+    assert client.get("/inventory").json == []
+
+
+@patch("app.requests.get")
+def test_lookup_returns_404_when_barcode_is_not_found(mock_get):
+    mock_get.return_value = mock_response({"status": 0})
+
+    response = make_client().get("/inventory/lookup?barcode=12345")
+
+    assert response.status_code == 404
+
+
+@patch("app.requests.get")
+def test_lookup_returns_502_when_external_data_is_invalid(mock_get):
+    mock_get.return_value = mock_response([])
+
+    response = make_client().get("/inventory/lookup?barcode=12345")
+
+    assert response.status_code == 502
+
+
+@patch("app.requests.get")
+def test_name_lookup_returns_empty_list_when_no_products_match(mock_get):
+    mock_get.return_value = mock_response({"products": []})
+
+    response = make_client().get("/inventory/lookup?name=not-found")
+
+    assert response.status_code == 200
+    assert response.json == {"products": []}
+
+
 def test_lookup_needs_either_barcode_or_name():
     client = make_client()
 
     response = client.get("/inventory/lookup")
 
     assert response.status_code == 400
+
+
+def test_lookup_rejects_both_barcode_and_name():
+    response = make_client().get(
+        "/inventory/lookup?barcode=12345&name=apples"
+    )
+
+    assert response.status_code == 400
+
+
+def test_namespaced_home_route_lists_mock_api_routes():
+    response = make_client().get("/openfoodfacts-server/api/")
+
+    assert response.status_code == 200
+    assert response.json["routes"] == [
+        "/openfoodfacts-server/api/product/<barcode>",
+        "/openfoodfacts-server/api/search?name=<name>",
+    ]
 
 
 def test_namespaced_barcode_route_returns_mock_openfoodfacts_data():
@@ -179,6 +320,15 @@ def test_namespaced_barcode_route_returns_mock_openfoodfacts_data():
     assert "id" in response.json["product"]
 
 
+def test_namespaced_barcode_route_returns_404_for_unknown_product():
+    response = make_client().get(
+        "/openfoodfacts-server/api/product/9999999999999"
+    )
+
+    assert response.status_code == 404
+    assert response.json["status"] == 0
+
+
 def test_namespaced_search_route_finds_products_by_name():
     client = make_client()
 
@@ -189,6 +339,15 @@ def test_namespaced_search_route_finds_products_by_name():
     assert response.status_code == 200
     assert len(response.json["products"]) == 1
     assert response.json["products"][0]["product_name"] == "Organic Almond Milk"
+
+
+def test_namespaced_search_matches_brands_without_case_sensitivity():
+    response = make_client().get(
+        "/openfoodfacts-server/api/search?name=sIlK"
+    )
+
+    assert response.status_code == 200
+    assert response.json["products"][0]["brands"] == "Silk"
 
 
 def test_namespaced_search_requires_a_name():
@@ -212,5 +371,12 @@ def test_lookup_reports_openfoodfacts_connection_errors(_mock_get):
     client = make_client()
 
     response = client.get("/inventory/lookup?barcode=12345")
+
+    assert response.status_code == 502
+
+
+@patch("app.requests.get", side_effect=requests.Timeout)
+def test_name_lookup_reports_openfoodfacts_connection_errors(_mock_get):
+    response = make_client().get("/inventory/lookup?name=apples")
 
     assert response.status_code == 502

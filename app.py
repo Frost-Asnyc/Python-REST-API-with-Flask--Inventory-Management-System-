@@ -5,10 +5,6 @@ import math
 from flask import Flask, jsonify, request
 import requests
 
-url = f"{OPENFOODFACTS_API_URL}{OPENFOODFACTS_API_PREFIX}/product/3017620422003.json"
-response = requests.get(url, headers={"User-Agent": "MyApp/1.0 (you@example.com)"})
-print(response.json())
-
 OPENFOODFACTS_PRODUCTS = [
     {
         "id": 1,
@@ -61,7 +57,7 @@ OPENFOODFACTS_PRODUCTS = [
 ]
 
 OPENFOODFACTS_API_URL = "https://world.openfoodfacts.org"
-OPENFOODFACTS_API_PREFIX = "/api/v2"
+OPENFOODFACTS_API_PREFIX = "/openfoodfacts-server/api"
 
 
 def create_app(test_config=None):

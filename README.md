@@ -1,5 +1,7 @@
 # Flask Inventory Management API
 
+Created by Lerionka Olentiki
+
 A beginner-friendly inventory manager built with Flask. A command-line client
 sends HTTP requests to the API. Inventory is stored in a Python list, so it
 resets when the server restarts.
